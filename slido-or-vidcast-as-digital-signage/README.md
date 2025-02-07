@@ -2,6 +2,8 @@
 
 This guide provides step-by-step instructions to display a Slido poll or a Vidcast video (or playlist) on your Cisco device in half-wake mode using the digital signage feature.
 
+![Slido for Cisco Devices](./assets/digital-signage.png)
+
 ---
 
 ## Step 1: Prepare Your Slido Poll or Vidcast Video
