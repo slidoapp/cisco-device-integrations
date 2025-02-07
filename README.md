@@ -11,11 +11,8 @@ This repository features a collection of macros that unlock exciting functionali
 1. **[Slido Auto Feedback Macro](./slido-auto-feedback/)**
    Automatically prompts users to provide feedback on the meeting or meeting room experience after a call ends.
 
-2. **Slido Digital Signage** *(Coming Soon)*
-   Transform idle screens into interactive displays, showcasing engaging polls or gathering valuable feedback during standby mode.
-
-3. **Vidcast Digital Signage** *(Coming Soon)*
-   Bring your screens to life with video highlights and closed captions, turning them into dynamic, informative screen savers.
+2. **[Digital Signage for Slido and Vidcast](./slido-or-vidcast-as-digital-signage/)**
+   Transform idle screens into interactive displays by showcasing engaging Slido polls or Vidcast videos. Bring your screens to life with dynamic content, from live feedback collection to video highlights with closed captions. [Learn how to set it up here.](./slido-or-vidcast-as-digital-signage/README.md)
 
 ---
 
