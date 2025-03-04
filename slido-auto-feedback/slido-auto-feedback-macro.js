@@ -50,6 +50,7 @@ const config = {
     FeedbackId: 'webviewAutoclose'
   },
   autoStandby: false,
+  displayMode: 'Modal' // 'Fullscreen' can fit longer survey without scrolling, 'Modal' will look nicer but might require shorter survey or user scrolling to send the survey
 };
 
 /********************************************************
@@ -64,8 +65,13 @@ xapi.Event.UserInterface.Extensions.Panel.Clicked.on(panelClicked)
 xapi.Event.CallDisconnect.on(callDisconnect);
 xapi.Status.MicrosoftTeams.Calling.InCall.on(handleMTRNewCallingStatus);
 
+async function hasNavigator() {
+  const peripherals = await xapi.Status.Peripherals.ConnectedDevice.get();
+  return peripherals.some(device => device.Type === 'TouchPanel' && device.Name.includes('Navigator'));
+}
+
 // Opens the WebView after clearing storage and waiting
-function openSlidoFeedback(autoClose = true) {
+async function openSlidoFeedback(autoClose = true) {
   console.log('Clearing WebEngine storage and opening Slido feedback');
   xapi.Command.WebEngine.DeleteStorage({ Type: 'WebApps' });
 
@@ -75,8 +81,10 @@ function openSlidoFeedback(autoClose = true) {
     slidoUrl += '&user_name=' + encodeURIComponent(config.deviceName);
   }
 
+  const target = await hasNavigator() ? 'Controller' : 'OSD';
+
   setTimeout(() => {
-    xapi.Command.UserInterface.WebView.Display({ Url: slidoUrl, Target: 'Controller' });
+    xapi.Command.UserInterface.WebView.Display({ Url: slidoUrl, Target: target, Mode: config.displayMode });
     // TODO: If the device has no navigator and it is a touch device, use Target: 'OSD' (for devices such as DeskPro)
     if (autoClose) startTimers();
   }, 500);
