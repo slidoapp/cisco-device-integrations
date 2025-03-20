@@ -5,8 +5,8 @@
  *               Technical Leader
  *               hraska@cisco.com
  *
- * Version:      1.0.0
- * Released:     6th of December 2024
+ * Version:      1.1.0
+ * Released:     27th of February 2025
  *
  * Description:
  * This macro is designed for Cisco devices to enhance meeting
@@ -38,6 +38,7 @@ import xapi from 'xapi';
  ********************************************************/
 const config = {
   slidoFeedbackUrl: 'https://app.sli.do/event/ufeNAaoyqxtshg2iRVud4S/embed/polls/507a0a49-a0d8-4b72-bef7-313f88f04e6f', // Go to slido.com, create your Slido poll within an event and copy the direct link here
+  deviceName: '', // By default, each feedback will be sent as an anonymouse user, you can use this to differentiate between devices (or rooms)
   alertTimeout: 45, // Time in seconds after opening the WebView to show the alert
   autoCloseTimeout: 15, // Time in seconds after showing the alert to auto-close the WebView
   alertPrompt: {
@@ -49,6 +50,7 @@ const config = {
     FeedbackId: 'webviewAutoclose'
   },
   autoStandby: false,
+  displayMode: 'Modal' // 'Fullscreen' can fit longer survey without scrolling, 'Modal' will look nicer but might require shorter survey or user scrolling to send the survey
 };
 
 /********************************************************
@@ -58,22 +60,66 @@ const config = {
 let autoCloseTimer = null;
 let alertTimer = null;
 
+xapi.Config.WebEngine.Mode.set('On');
 xapi.Event.UserInterface.Extensions.Panel.Clicked.on(panelClicked)
 xapi.Event.CallDisconnect.on(callDisconnect);
+xapi.Status.MicrosoftTeams.Calling.InCall.on(handleMTRNewCallingStatus);
+
+async function hasNavigator() {
+  const peripherals = await xapi.Status.Peripherals.ConnectedDevice.get();
+  return peripherals.some(device => device.Type === 'TouchPanel' && device.Name.includes('Navigator'));
+}
 
 // Opens the WebView after clearing storage and waiting
-function openSlidoFeedback(autoClose = true) {
+async function openSlidoFeedback(autoClose = true) {
   console.log('Clearing WebEngine storage and opening Slido feedback');
   xapi.Command.WebEngine.DeleteStorage({ Type: 'WebApps' });
 
+  let slidoUrl = config.slidoFeedbackUrl + '?lightness=dark';
+
+  if (config.deviceName) {
+    slidoUrl += '&user_name=' + encodeURIComponent(config.deviceName);
+  }
+
+  const target = await hasNavigator() ? 'Controller' : 'OSD';
+
   setTimeout(() => {
-    xapi.Command.UserInterface.WebView.Display({ Url: config.slidoFeedbackUrl + '?lightness=dark', Target: 'Controller' });
+    xapi.Command.UserInterface.WebView.Display({ Url: slidoUrl, Target: target, Mode: config.displayMode });
+    // TODO: If the device has no navigator and it is a touch device, use Target: 'OSD' (for devices such as DeskPro)
     if (autoClose) startTimers();
   }, 500);
 }
 
+async function isWebViewVisible() {
+  const webViews = await xapi.Status.UserInterface.WebView.get();
+
+  // No WebViews returning false
+  if (webViews.length == 0) return false;
+
+  // Filter Visible and valid WebView types
+  const validViews = webViews.filter(view => {
+    return view.Status == 'Visible' &&
+      (view.Type == 'WebApp' ||
+        view.Type == 'Integration' ||
+        view.Type == 'ECM' ||
+        view.Type == 'ECMSignIn')
+  })
+
+  // Return if any valid webviews are visible
+  console.log(`Visible WebView count: ${validViews.length}`)
+
+  return validViews.length > 0;
+}
+
 // Displays the auto-close alert prompt
-function displayPrompt() {
+async function displayPrompt() {
+  const webViewVisible = await isWebViewVisible();
+
+  // If there are no WebView visible, do not display the prompt
+  if (!webViewVisible) {
+    return;
+  }
+
   console.log('Displaying Auto Close Prompt');
   xapi.Command.UserInterface.Message.Prompt.Display(config.alertPrompt);
 
@@ -145,6 +191,16 @@ function callDisconnect(event) {
   console.log('Call disconnected: ' + event.RemoteURI);
   console.log('Opening Slido');
   openSlidoFeedback();
+}
+
+// Event listener for MTR call disconnect
+async function handleMTRNewCallingStatus(status) {
+  console.log(`MTR -- handleNewCallingStatus: ${status}`);
+
+  if (status === 'False') {
+    console.log('MTR -- Launching Survey');
+    openSlidoFeedback();
+  }
 }
 
 // Event listener for button clicks
